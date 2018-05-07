@@ -6,6 +6,7 @@ import numpy as np
 import requests
 import re
 import json
+import psutil
 import asyncio
 
 from bs4 import BeautifulSoup
@@ -23,7 +24,7 @@ REPORT_DATA = "http://root.wgclick.com:88/data/cgi/crawler/reportData"
 IMAGE_UPLOAD = "http://picture.wgclick.com:80"
 # proxies = {"http": "http://127.0.0.1:1080", "https": "https://127.0.0.1:1080", }
 proxies = None
-login_accounts = [("username", "pass"), ]
+login_accounts = [("0971764790", "038441356"), ("0971784574", "038441185")]
 
 browser = None
 
@@ -32,14 +33,13 @@ def main():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(login())
     accounts = get_accounts(FACEBOOK)
-    now = str(datetime.now())
     acct_list = [account["username"] for account in accounts]
     with open("record.txt", "a") as f:
-        f.write("{}: Got{}Accounts. Account list:{} \n".format(now, len(accounts), acct_list))
+        f.write("{}: Got {} Accounts. Account list: {} \n".format(now(), len(accounts), acct_list))
     if not accounts:
         print('No Facebook account')
         return
-    print("Got {} Facebook accounts".format(len(accounts)))
+    print("{}: Got {} Facebook accounts".format(now(), len(accounts)))
     for account in accounts:
         last_publish_time = None
         if account["last_publish_time"] and account["last_publish_time"] != "0":
@@ -54,15 +54,31 @@ def main():
     asyncio.get_event_loop().run_until_complete(close_browser())
 
 
+def kill_chrome():
+    pids = psutil.pids()
+    try:
+        for pid in pids:
+            p = psutil.Process(pid)
+            if 'chrome' in p.name():
+                p.kill()
+                print('{}: Killed chrome process ({}: {})'.format(now(), p.pid, p.name()))
+    except Exception as e0:
+        print('{}: Killed chrome process error: {}'.format(now(), e0))
+
+
+def now():
+    return str(datetime.now())
+
+
 async def close_browser():
     global browser
     await browser.close()
-    print("Close Pyppeteer browser")
+    print("{}： Close Pyppeteer browser".format(now()))
 
 
 async def login():
     username, password = choice(login_accounts)
-    print("{} is logging...".format(username))
+    print("{}: {} is logging...".format(now(), username))
     global browser
     browser = await launch(
         headless=True,
@@ -91,7 +107,7 @@ async def login():
     await page.type("#m_login_email", username)
     await page.type("#m_login_password", password)
     await page.click("[name=login]")
-    print("Done")
+    print("{}: Done".format(now()))
 
 
 async def content_handler(username, year, last_publish_time, account):
@@ -163,12 +179,12 @@ def parse(html, last_publish_time, account):
         publish_time = date_time
         if publish_time and last_publish_time:
             if publish_time <= last_publish_time:
-                print("{}is up-to-date, no need to crawl".format(account["username"]))
+                print("{}: {} is up-to-date, no need to crawl".format(now(), account["username"]))
                 return
         else:
-            print("First crawling. Count:{}".format(count))
+            print("{}: First crawling. Count:{}".format(now(), count))
             if count == 0:
-                print("{} has crawled max value items".format(account["username"]))
+                print("{}: {} has crawled max value items".format(now(), account["username"]))
                 return
             count -= 1
         report(item)
@@ -188,12 +204,12 @@ def receive_data():
         if is_successful:
             data = r.get("list")
             if data:
-                print("Got accounts from interface, max: {}".format(MAX_ACCOUNT))
+                print("{}: Got accounts from interface, max: {}".format(now(), MAX_ACCOUNT))
                 return data
             else:
-                print("no account today")
+                print("{}: no account today".format(now()))
                 return None
-    print("Failed to get accounts from interface")
+    print("{}: Failed to get accounts from interface".format(now()))
     return None
 
 
@@ -225,13 +241,13 @@ def report_data(data_list):
     if req.status_code == 200:
         r = json.loads(req.text)
         if r.get("result"):
-            print("Result from interface: {}".format(r.get("result")))
-            print("Reported an item")
+            print("{}: Result from interface: {}".format(now(), r.get("result")))
+            print("{}: Reported an item".format(now()))
             return True
         else:
-            print("Reported abortively")
+            print("{}: Reported abortively".format(now()))
             return False
-    print("Reporting interface invalid: {}".format(req.status_code))
+    print("{}: Reporting interface invalid: {}".format(now(), req.status_code))
     return False
 
 
@@ -253,10 +269,10 @@ def save_img(item):
                     md5 = result_info["md5"]
                     whole = urljoin(IMAGE_UPLOAD, md5)
                     if md5:
-                        print("Uploaded image: {}".format(file_name))
+                        print("{}: Uploaded image: {}".format(now(), file_name))
                         md5_list.append(whole)
-            except Exception as e:
-                print("Uploaded image abortively: {}".format(e))
+            except Exception as e1:
+                print("{}: Uploaded image abortively: {}".format(now(), e1))
                 return None
     return md5_list
 
@@ -295,7 +311,7 @@ def report(item):
     keywords = ("分享视频", "视频链接", "秒拍视频")
     for k in keywords:
         if k in item["text"]:
-            print("Contain video keywords. Abandon: {}".format(item["text"]))
+            print("{}: Contain video keywords. Abandon: {}".format(now(), item["text"]))
             return
     return item
 
@@ -304,7 +320,7 @@ def dt_2_ts(dt):
     try:
         return int(time.mktime(dt.timetuple()))
     except Exception as e:
-        print("Datetime to Timestamp abortively：{}".format(e))
+        print("{}: Datetime to Timestamp abortively：{}".format(now(), e))
         return None
 
 
@@ -390,5 +406,5 @@ if __name__ == "__main__":
         try:
             main()
             time.sleep(10)
-        except Exception as e:
-            print("Main loop Exception: {}".format(e))
+        except Exception as e3:
+            print("{}: Main loop Exception: {}".format(now(), e3))
