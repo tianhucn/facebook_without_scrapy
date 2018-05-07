@@ -30,6 +30,7 @@ browser = None
 
 
 def main():
+    kill_chrome()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(login())
     accounts = get_accounts(FACEBOOK)
