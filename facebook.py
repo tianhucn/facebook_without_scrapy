@@ -7,6 +7,7 @@ import requests
 import re
 import json
 import psutil
+import os
 import asyncio
 
 from bs4 import BeautifulSoup
@@ -30,7 +31,6 @@ browser = None
 
 
 def main():
-    kill_chrome()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(login())
     accounts = get_accounts(FACEBOOK)
@@ -55,16 +55,16 @@ def main():
     asyncio.get_event_loop().run_until_complete(close_browser())
 
 
-def kill_chrome():
-    pids = psutil.pids()
-    try:
-        for pid in pids:
-            p = psutil.Process(pid)
-            if 'chrome' in p.name():
-                p.kill()
-                print('{}: Killed chrome process ({}: {})'.format(now(), p.pid, p.name()))
-    except Exception as e0:
-        print('{}: Killed chrome process error: {}'.format(now(), e0))
+# def kill_chrome():
+#     pids = psutil.pids()
+#     try:
+#         for pid in pids:
+#             p = psutil.Process(pid)
+#             if 'chrome' in p.name():
+#                 p.kill()
+#                 print('{}: Killed chrome process ({}: {})'.format(now(), p.pid, p.name()))
+#     except Exception as e0:
+#         print('{}: Killed chrome process error: {}'.format(now(), e0))
 
 
 def now():
@@ -403,7 +403,7 @@ def parse_comment(span):
 
 
 if __name__ == "__main__":
-    while True:
+    for _ in range(100):
         try:
             main()
             time.sleep(10)
